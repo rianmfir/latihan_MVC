@@ -14,15 +14,5 @@ func init() {
 	if err != nil {
 		panic("failed to connect to database" + err.Error())
 	}
-	DB.AutoMigrate(new(Account),new(Transaction),new(Auth))
+	DB.AutoMigrate(new(Account),new(Transaction))
 }
-
-// func DBinit() *gorm.DB{
-	
-// 	db, err := gorm.Open(mysql.Open(fmt.Sprintf("root@/digitalent_bank")), &gorm.Config{})
-// 	if err != nil {
-// 		panic("failed to connect to database" + err.Error())
-// 	}
-// 	db.AutoMigrate(new(Account),new(Transaction),new(Auth))
-// 	return db
-// }

@@ -102,6 +102,35 @@ func GetAccountDetail(idAccount int) (bool,error, []Transaction,Account){
 	}
 }
 
+func GetAccountMutasiLast(idAccount int) (bool, error, []Transaction, Account) {
+	var transaction []Transaction
+	var account Account
+
+	if err := DB.Where("sender = ? OR recipient = ?",
+		idAccount, idAccount).Order("id desc").Limit(30).Find(&transaction).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, errors.Errorf("Account Not Found"), []Transaction{}, Account{}
+		} else {
+			return false, errors.Errorf("Invalid prepare statement :%+v\n", err), []Transaction{}, Account{}
+		}
+	}
+
+	if err := DB.Where(&Account{AccountNumber: idAccount}).Find(&account).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return false, errors.Errorf("Accout not Found"), []Transaction{}, Account{}
+		} else {
+			return false, errors.Errorf("Invalid prepare statement :%+v\n", err), []Transaction{}, Account{}
+		}
+	}
+
+	return true, nil, transaction, Account{
+		IdAccount:     account.IdAccount,
+		Name:          account.Name,
+		AccountNumber: account.AccountNumber,
+		Saldo:         account.Saldo,
+	}
+}
+
 func Transfer (transaction Transaction) (bool,error){
 
 	err := DB.Transaction(func(tx *gorm.DB) error {
@@ -176,4 +205,32 @@ func Deposit (transaction Transaction) (bool,error){
 	}
 
 	return true,nil
+}
+
+func Interest(transaction Transaction) (bool, error) {
+
+	err := DB.Transaction(func(tx *gorm.DB) error {
+		var result []map[string]interface{}
+		tx.Model(&Account{}).Find(&result)
+		for i, hasil := range result {
+			if err := tx.Model(&Account{}).Where(&Account{ID: i + 1}).
+				Update("saldo", hasil["saldo"].(int)+(hasil["saldo"].(int)*2/100)).Error; err != nil {
+			
+				return err
+			}	
+		}
+		transaction.TransactionType = constant.INTEREST
+		transaction.Timestamp = time.Now().Unix()
+		if err := tx.Create(&transaction).Error; err != nil {
+	
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
